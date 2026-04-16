@@ -112,7 +112,7 @@ function App() {
         </section>
 
         <section className="results-column">
-          <ResultsPanel result={result} />
+          <ResultsPanel data={result} />
         </section>
       </main>
     </div>
