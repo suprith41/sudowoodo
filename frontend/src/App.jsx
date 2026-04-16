@@ -7,21 +7,17 @@ import Uploader from './components/Uploader'
 
 const defaultSchema = `{
   "document_type": "",
-  "document_date": "",
-  "issuer": "",
-  "recipient": "",
-  "document_number": "",
-  "line_items": [
+  "title": "",
+  "date": "",
+  "entries": [
     {
-      "description": "",
-      "quantity": "",
-      "unit_price": "",
-      "amount": ""
+      "number": "",
+      "name": "",
+      "location": ""
     }
   ],
-  "subtotal": "",
-  "tax": "",
-  "total_amount": ""
+  "total_entries": null,
+  "notes": ""
 }`
 
 function App() {

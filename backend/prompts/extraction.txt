@@ -5,5 +5,6 @@ Rules:
 - Return JSON only. Do not include markdown, comments, or explanations.
 - If a value cannot be found, use null.
 - Preserve lists when the document contains repeated rows or repeated sections.
+- If the document is a list of people or names, map each row as an entry with number, name, and location fields.
 - Prefer the exact text from the document for names, identifiers, dates, and totals.
 - Do not invent values that are not visible in the document.
