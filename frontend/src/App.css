@@ -45,10 +45,8 @@
 .hero-card {
   border-radius: 22px;
   padding: 22px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(235, 242, 255, 0.88)),
-    radial-gradient(circle at top, rgba(32, 104, 255, 0.22), transparent 52%);
-  border: 1px solid rgba(32, 104, 255, 0.18);
+  background: var(--card-bg-soft);
+  border: 1px solid var(--border);
 }
 
 .hero-card-label {
@@ -180,7 +178,7 @@
   border-radius: 18px;
   padding: 16px 18px;
   font: 700 1rem/1 var(--body);
-  background: linear-gradient(135deg, #1f63ff, #0b8dfb);
+  background: var(--blue-accent);
   color: #ffffff;
   cursor: pointer;
   transition:
@@ -235,17 +233,17 @@
 }
 
 .results-toggle button {
-  border: 1px solid #1f63ff;
+  border: 1px solid var(--blue-accent);
   border-radius: 999px;
   padding: 8px 16px;
   background: transparent;
-  color: #1f63ff;
+  color: var(--blue-accent);
   font: 600 0.95rem/1 var(--body);
   cursor: pointer;
 }
 
 .results-toggle button.active {
-  background: #1f63ff;
+  background: var(--blue-accent);
   color: #ffffff;
 }
 

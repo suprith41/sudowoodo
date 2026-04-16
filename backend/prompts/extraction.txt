@@ -4,6 +4,12 @@ Rules:
 - Read every page carefully before answering.
 - Return JSON only. Do not include markdown, comments, or explanations.
 - If a value cannot be found, use null.
+- For every extracted leaf field, return an object with `value` and `confidence`.
+- Use confidence `1.0` when the value is clearly visible in the document.
+- Use confidence `0.7` when the value is inferred or only partially visible.
+- Use confidence `0.4` when the value is guessed from context.
+- Null values must always have confidence `0.0`.
+- Example format: `"invoice_number": {"value": "INV-001", "confidence": 1.0}`.
 - Preserve lists when the document contains repeated rows or repeated sections.
 - If the document is a list of people or names, map each row as an entry with number, name, and location fields.
 - Prefer the exact text from the document for names, identifiers, dates, and totals.

@@ -47,6 +47,97 @@ def _normalize_strings(value: Any) -> Any:
     return value
 
 
+def _is_confidence_wrapper(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and "value" in value
+        and "confidence" in value
+        and set(value.keys()).issubset({"value", "confidence"})
+    )
+
+
+def _normalize_confidence(confidence: Any, value: Any) -> float:
+    if value is None:
+        return 0.0
+
+    if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
+        return max(0.0, min(float(confidence), 1.0))
+
+    return 1.0
+
+
+def _coerce_leaf_value(value: Any, schema_type: str | None = None, example: Any = None) -> Any:
+    if value is None:
+        return None
+
+    if schema_type == "integer":
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return value
+
+    if schema_type == "number":
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return value
+
+    if schema_type == "boolean":
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            lowered = value.lower()
+            if lowered in {"true", "yes"}:
+                return True
+            if lowered in {"false", "no"}:
+                return False
+        return value
+
+    if schema_type == "string":
+        return str(value)
+
+    if isinstance(example, bool):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            lowered = value.lower()
+            if lowered in {"true", "yes"}:
+                return True
+            if lowered in {"false", "no"}:
+                return False
+        return value
+
+    if isinstance(example, int) and not isinstance(example, bool):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return value
+
+    if isinstance(example, float):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return value
+
+    if isinstance(example, str):
+        return str(value)
+
+    return value
+
+
+def _shape_confidence_leaf(data: Any, *, schema_type: str | None = None, example: Any = None) -> dict[str, Any]:
+    if _is_confidence_wrapper(data):
+        raw_value = data.get("value")
+        raw_confidence = data.get("confidence")
+    else:
+        raw_value = data
+        raw_confidence = None
+
+    value = _coerce_leaf_value(raw_value, schema_type=schema_type, example=example)
+    confidence = _normalize_confidence(raw_confidence, value)
+    return {"value": value, "confidence": confidence}
+
+
 def _shape_from_example(data: Any, example: Any) -> Any:
     if isinstance(example, dict):
         source = data if isinstance(data, dict) else {}
@@ -60,7 +151,7 @@ def _shape_from_example(data: Any, example: Any) -> Any:
             return data
         return [_shape_from_example(item, item_schema) for item in data]
 
-    return data
+    return _shape_confidence_leaf(data, example=example)
 
 
 def _shape_from_json_schema(data: Any, schema: dict[str, Any]) -> Any:
@@ -83,36 +174,7 @@ def _shape_from_json_schema(data: Any, schema: dict[str, Any]) -> Any:
             return source
         return [_shape_from_json_schema(item, items_schema) for item in source]
 
-    if data is None:
-        return None
-
-    if schema_type == "integer":
-        try:
-            return int(data)
-        except (TypeError, ValueError):
-            return data
-
-    if schema_type == "number":
-        try:
-            return float(data)
-        except (TypeError, ValueError):
-            return data
-
-    if schema_type == "boolean":
-        if isinstance(data, bool):
-            return data
-        if isinstance(data, str):
-            lowered = data.lower()
-            if lowered in {"true", "yes"}:
-                return True
-            if lowered in {"false", "no"}:
-                return False
-        return data
-
-    if schema_type == "string":
-        return str(data)
-
-    return data
+    return _shape_confidence_leaf(data, schema_type=schema_type)
 
 
 def clean_and_validate_json(raw_output: str, schema: Any) -> Any:
