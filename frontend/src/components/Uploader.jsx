@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const acceptedExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'tif', 'tiff', 'webp']
 const acceptedMimeTypes = [
@@ -83,6 +83,10 @@ const styles = {
     padding: '10px 18px',
     boxShadow: '0 8px 18px rgba(37, 99, 235, 0.22)',
   },
+  browseButtonMobile: {
+    width: '100%',
+    justifyContent: 'center',
+  },
   hiddenInput: {
     display: 'none',
   },
@@ -163,11 +167,21 @@ function joinStyles(...styleObjects) {
   return Object.assign({}, ...styleObjects)
 }
 
-function Uploader({ selectedFile, onFileSelect }) {
+function Uploader({ isMobile = false, selectedFile, onFileSelect, onOpenPickerReady = null }) {
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef(null)
   const dragDepth = useRef(0)
+
+  useEffect(() => {
+    if (!onOpenPickerReady) {
+      return undefined
+    }
+
+    onOpenPickerReady(() => inputRef.current?.click())
+
+    return () => onOpenPickerReady(null)
+  }, [onOpenPickerReady])
 
   function selectFile(file) {
     if (!file) {
@@ -258,7 +272,7 @@ function Uploader({ selectedFile, onFileSelect }) {
         <p style={styles.subtitle}>Drop a supported document into this area, or choose one manually.</p>
         <button
           className="sudowoodo-pressable"
-          style={styles.browseButton}
+          style={joinStyles(styles.browseButton, isMobile ? styles.browseButtonMobile : null)}
           type="button"
           onClick={handleBrowseClick}
         >

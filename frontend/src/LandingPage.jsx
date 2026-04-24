@@ -1,10 +1,15 @@
 import { Link } from 'react-router-dom'
 
+const bugReportMailto = 'mailto:hello@sudowoodo.app?subject=Sudowoodo%20bug%20report'
+
 const styles = {
   page: {
     minHeight: '100vh',
     color: 'var(--text-primary)',
-    background: 'linear-gradient(180deg, var(--app-bg-soft) 0%, var(--app-bg) 100%)',
+    backgroundColor: 'var(--app-bg)',
+    backgroundImage:
+      'radial-gradient(circle at 1px 1px, rgba(29, 78, 216, 0.12) 1.1px, transparent 0), linear-gradient(180deg, var(--app-bg-soft) 0%, var(--app-bg) 100%)',
+    backgroundSize: '24px 24px, auto',
     fontFamily:
       'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   },
@@ -270,6 +275,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: '16px',
     width: 'min(1120px, calc(100% - 40px))',
     margin: '0 auto',
@@ -277,6 +283,11 @@ const styles = {
     borderTop: '1px solid var(--border)',
     color: 'var(--text-secondary)',
     fontSize: '0.95rem',
+  },
+  footerLink: {
+    color: 'var(--blue-accent)',
+    fontWeight: 800,
+    textDecoration: 'none',
   },
 }
 
@@ -343,6 +354,12 @@ function LandingPage() {
         <div style={styles.navLinks}>
           <Link style={styles.logo} to="/">
             SUDOWOODO
+          </Link>
+          <Link style={styles.navLink} to="/dashboard">
+            Dashboard
+          </Link>
+          <Link style={styles.navLink} to="/batch">
+            Batch
           </Link>
           <Link style={styles.navLink} to="/docs">
             API Docs
@@ -435,6 +452,9 @@ function LandingPage() {
 
       <footer style={styles.footer}>
         <span>Built with Groq + Llama 4 Scout</span>
+        <a href={bugReportMailto} style={styles.footerLink}>
+          Report a bug
+        </a>
         <span>Sudowoodo © 2026</span>
       </footer>
     </div>

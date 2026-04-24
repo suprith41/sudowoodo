@@ -572,6 +572,12 @@ function ApiDocs() {
           <Link style={styles.logo} to="/">
             SUDOWOODO
           </Link>
+          <Link style={styles.navLink} to="/dashboard">
+            Dashboard
+          </Link>
+          <Link style={styles.navLink} to="/batch">
+            Batch
+          </Link>
           <Link style={styles.navLink} to="/docs">
             API Docs
           </Link>

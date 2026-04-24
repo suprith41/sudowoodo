@@ -1,47 +1,4 @@
-const documentSchemas = {
-  Invoice: {
-    document_type: '',
-    document_date: '',
-    issuer: '',
-    recipient: '',
-    document_number: '',
-    line_items: [{ description: '', quantity: null, unit_price: null, amount: null }],
-    subtotal: null,
-    tax: null,
-    total_amount: null,
-  },
-  Receipt: {
-    document_type: 'receipt',
-    store_name: '',
-    date: '',
-    items: [{ name: '', quantity: null, price: null }],
-    subtotal: null,
-    tax: null,
-    total: null,
-    payment_method: '',
-  },
-  'Medical Record': {
-    document_type: 'medical_record',
-    patient_name: '',
-    date: '',
-    doctor: '',
-    hospital: '',
-    diagnosis: '',
-    medications: [{ name: '', dosage: '', frequency: '' }],
-    notes: '',
-  },
-  Contract: {
-    document_type: 'contract',
-    title: '',
-    date: '',
-    party_a: '',
-    party_b: '',
-    terms: [],
-    total_value: null,
-    start_date: '',
-    end_date: '',
-  },
-}
+import { documentSchemas, schemaToText } from '../lib/documentSchemas'
 
 const documentTypes = ['Invoice', 'Receipt', 'Medical Record', 'Contract', 'Custom']
 
@@ -76,6 +33,7 @@ const styles = {
   autoDetectButton: {
     display: 'inline-flex',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: '10px',
     border: '1px solid var(--blue-accent)',
     borderRadius: '999px',
@@ -140,10 +98,14 @@ const styles = {
     resize: 'vertical',
     outlineColor: 'var(--blue-accent)',
   },
-}
-
-function schemaToText(schema) {
-  return JSON.stringify(schema, null, 2)
+  autoDetectButtonMobile: {
+    width: '100%',
+  },
+  textareaMobile: {
+    minHeight: '220px',
+    fontSize: '0.88rem',
+    padding: '14px',
+  },
 }
 
 function joinStyles(...styleObjects) {
@@ -161,6 +123,7 @@ function getActiveType(schemaText) {
 }
 
 function SchemaEditor({
+  isMobile = false,
   schemaText,
   onSchemaChange,
   onAutoDetectSchema,
@@ -190,6 +153,7 @@ function SchemaEditor({
           className="sudowoodo-pressable"
           style={joinStyles(
             styles.autoDetectButton,
+            isMobile ? styles.autoDetectButtonMobile : null,
             autoDetectDisabled ? styles.autoDetectButtonDisabled : null,
           )}
           type="button"
@@ -218,7 +182,7 @@ function SchemaEditor({
       </div>
 
       <textarea
-        style={styles.textarea}
+        style={joinStyles(styles.textarea, isMobile ? styles.textareaMobile : null)}
         value={schemaText}
         onChange={handleTextChange}
         spellCheck="false"
@@ -227,5 +191,4 @@ function SchemaEditor({
   )
 }
 
-export { documentSchemas, schemaToText }
 export default SchemaEditor

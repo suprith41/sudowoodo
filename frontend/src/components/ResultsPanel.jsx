@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useRef, useState } from 'react'
 
 const dash = '—'
 const loadingMessages = [
@@ -7,6 +7,13 @@ const loadingMessages = [
   'Extracting fields...',
   'Validating JSON...',
   'Almost done...',
+]
+const exportOptions = [
+  { id: 'download-json', label: 'Download JSON' },
+  { id: 'download-csv', label: 'Download CSV' },
+  { id: 'copy-json', label: 'Copy JSON' },
+  { id: 'copy-table', label: 'Copy as Table' },
+  { id: 'google-sheets', label: 'Export to Google Sheets' },
 ]
 const tabTransitionDurationMs = 220
 
@@ -165,6 +172,69 @@ const styles = {
     background: 'var(--blue-accent-soft)',
     color: 'var(--blue-accent-text)',
     boxShadow: 'none',
+  },
+  exportMenuWrap: {
+    position: 'relative',
+  },
+  exportButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  exportButtonOpen: {
+    background: '#163fae',
+    borderColor: '#163fae',
+  },
+  exportButtonLabel: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  chevron: {
+    width: '16px',
+    height: '16px',
+    flexShrink: 0,
+    transform: 'rotate(0deg)',
+    transition: 'transform 180ms ease',
+  },
+  chevronOpen: {
+    transform: 'rotate(180deg)',
+  },
+  exportMenu: {
+    position: 'absolute',
+    top: 'calc(100% + 10px)',
+    right: 0,
+    minWidth: '220px',
+    padding: '8px',
+    border: '1px solid var(--border)',
+    borderRadius: '12px',
+    background: 'var(--card-bg)',
+    boxShadow: '0 18px 38px rgba(15, 23, 42, 0.18)',
+    zIndex: 10,
+  },
+  exportMenuItem: {
+    width: '100%',
+    border: 0,
+    borderRadius: '10px',
+    background: 'transparent',
+    color: 'var(--text-primary)',
+    cursor: 'pointer',
+    display: 'block',
+    font: 'inherit',
+    fontSize: '0.92rem',
+    fontWeight: 600,
+    padding: '11px 12px',
+    textAlign: 'left',
+    transition: 'background-color 140ms ease, color 140ms ease',
+  },
+  exportMenuItemHover: {
+    background: 'var(--blue-accent-soft)',
+    color: 'var(--blue-accent-text)',
+  },
+  exportFeedback: {
+    color: 'var(--text-secondary)',
+    fontSize: '0.82rem',
+    fontWeight: 700,
   },
   invoiceDocument: {
     border: '1px solid var(--border-soft)',
@@ -326,6 +396,43 @@ const styles = {
   emptyMessage: {
     margin: 0,
     fontSize: '0.98rem',
+  },
+  emptyState: {
+    minHeight: '420px',
+    display: 'grid',
+    placeItems: 'center',
+    padding: '24px',
+  },
+  emptyStateContent: {
+    display: 'grid',
+    justifyItems: 'center',
+    gap: '12px',
+    maxWidth: '320px',
+    textAlign: 'center',
+  },
+  emptyStateIcon: {
+    display: 'grid',
+    placeItems: 'center',
+    width: '76px',
+    height: '76px',
+    borderRadius: '24px',
+    background: 'var(--blue-accent-soft)',
+    border: '1px solid var(--border)',
+    color: 'var(--blue-accent-text)',
+    fontSize: '2.2rem',
+    boxShadow: '0 14px 28px rgba(29, 78, 216, 0.12)',
+  },
+  emptyStateTitle: {
+    margin: 0,
+    color: 'var(--text-primary)',
+    fontSize: '1.08rem',
+    fontWeight: 800,
+  },
+  emptyStateSubtext: {
+    margin: 0,
+    color: 'var(--text-secondary)',
+    fontSize: '0.94rem',
+    lineHeight: 1.5,
   },
   loadingOverlay: {
     display: 'grid',
@@ -587,6 +694,157 @@ function stringifyJson(value) {
   return JSON.stringify(value, null, 2)
 }
 
+function unwrapExportValue(value) {
+  if (isConfidenceWrapper(value)) {
+    return unwrapExportValue(value.value)
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(unwrapExportValue)
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [key, unwrapExportValue(nestedValue)]),
+    )
+  }
+
+  return value
+}
+
+function flattenRows(value, prefix = '') {
+  const normalizedValue = unwrapExportValue(value)
+
+  if (Array.isArray(normalizedValue)) {
+    if (!normalizedValue.length) {
+      return prefix ? [{ [prefix]: '' }] : [{}]
+    }
+
+    return normalizedValue.flatMap((item, index) =>
+      flattenRows(item, prefix ? `${prefix}.${index}` : String(index)),
+    )
+  }
+
+  if (normalizedValue && typeof normalizedValue === 'object') {
+    const entries = Object.entries(normalizedValue)
+
+    if (!entries.length) {
+      return prefix ? [{ [prefix]: '' }] : [{}]
+    }
+
+    let rows = [{}]
+
+    for (const [key, nestedValue] of entries) {
+      const nestedPrefix = prefix ? `${prefix}.${key}` : key
+      const nestedRows = flattenRows(nestedValue, nestedPrefix)
+
+      rows = rows.flatMap((row) => nestedRows.map((nestedRow) => ({ ...row, ...nestedRow })))
+    }
+
+    return rows
+  }
+
+  return [{ [prefix || 'value']: normalizedValue ?? '' }]
+}
+
+function getExportRows(value) {
+  const rows = flattenRows(value)
+  return rows.length ? rows : [{}]
+}
+
+function getExportColumns(rows) {
+  const seen = new Set()
+
+  rows.forEach((row) => {
+    Object.keys(row).forEach((key) => {
+      if (!seen.has(key)) {
+        seen.add(key)
+      }
+    })
+  })
+
+  return seen.size ? Array.from(seen) : ['value']
+}
+
+function formatExportCellValue(value) {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  if (typeof value === 'object') {
+    return JSON.stringify(value)
+  }
+
+  return String(value)
+}
+
+function escapeCsvValue(value) {
+  const text = formatExportCellValue(value)
+
+  if (!/[",\n]/.test(text)) {
+    return text
+  }
+
+  return `"${text.replaceAll('"', '""')}"`
+}
+
+function rowsToDelimitedText(rows, columns, delimiter = ',') {
+  return [
+    columns.map((column) => escapeCsvValue(column)).join(delimiter),
+    ...rows.map((row) =>
+      columns.map((column) => escapeCsvValue(row[column] ?? '')).join(delimiter),
+    ),
+  ].join('\n')
+}
+
+function escapeMarkdownCell(value) {
+  return formatExportCellValue(value).replaceAll('|', '\\|').replaceAll('\n', '<br />')
+}
+
+function rowsToMarkdownTable(rows, columns) {
+  const header = `| ${columns.map(escapeMarkdownCell).join(' | ')} |`
+  const separator = `| ${columns.map(() => '---').join(' | ')} |`
+  const body = rows.map(
+    (row) => `| ${columns.map((column) => escapeMarkdownCell(row[column] ?? '')).join(' | ')} |`,
+  )
+
+  return [header, separator, ...body].join('\n')
+}
+
+function downloadTextFile(content, filename, type) {
+  const blob = new Blob([content], { type })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+
+  const textArea = document.createElement('textarea')
+  textArea.value = text
+  textArea.setAttribute('readonly', '')
+  textArea.style.position = 'fixed'
+  textArea.style.opacity = '0'
+  document.body.appendChild(textArea)
+  textArea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textArea)
+}
+
+function buildGoogleSheetsUrl(json) {
+  return `https://docs.google.com/spreadsheets/create?usp=sheets_web#sudowoodo-json=${encodeURIComponent(json)}`
+}
+
 function InvoiceTextView({ data }) {
   const documentType = prettifyDocumentType(getFirstValue(data, ['document_type', 'type']))
   const documentNumber = getFirstValue(data, [
@@ -738,19 +996,6 @@ function ToggleButton({ active, children, onClick }) {
   )
 }
 
-function ActionButton({ children, onClick, secondary = false }) {
-  return (
-    <button
-      className="sudowoodo-pressable"
-      style={joinStyles(styles.actionButton, secondary ? styles.actionButtonSecondary : null)}
-      type="button"
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  )
-}
-
 function LoadingOverlay({ message }) {
   return (
     <div style={styles.loadingOverlay}>
@@ -762,21 +1007,30 @@ function LoadingOverlay({ message }) {
   )
 }
 
-function ResultsPanel({ data, loading = false, pagesProcessed = null, warning = null }) {
+function ResultsPanel({
+  data,
+  loading = false,
+  pagesProcessed = null,
+  warning = null,
+  onRegisterActions = null,
+}) {
   const [selectedView, setSelectedView] = useState('text')
   const [renderedView, setRenderedView] = useState('text')
   const [transitionView, setTransitionView] = useState(null)
-  const [copied, setCopied] = useState(false)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [exportFeedback, setExportFeedback] = useState('')
+  const [hoveredExportOption, setHoveredExportOption] = useState(null)
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
   const [contentAnimationKey, setContentAnimationKey] = useState(0)
   const deferredData = useDeferredValue(data)
-  const copyResetTimer = useRef(null)
+  const exportFeedbackTimer = useRef(null)
+  const exportMenuRef = useRef(null)
   const tabTransitionTimer = useRef(null)
 
   useEffect(() => {
     return () => {
-      if (copyResetTimer.current) {
-        clearTimeout(copyResetTimer.current)
+      if (exportFeedbackTimer.current) {
+        clearTimeout(exportFeedbackTimer.current)
       }
 
       if (tabTransitionTimer.current) {
@@ -790,6 +1044,7 @@ function ResultsPanel({ data, loading = false, pagesProcessed = null, warning = 
       setSelectedView('text')
       setRenderedView('text')
       setTransitionView(null)
+      setExportMenuOpen(false)
     }
   }, [deferredData, loading])
 
@@ -799,7 +1054,7 @@ function ResultsPanel({ data, loading = false, pagesProcessed = null, warning = 
     }
   }, [deferredData])
 
-  function handleViewChange(nextView) {
+  const handleViewChange = useCallback((nextView) => {
     if (nextView === selectedView) {
       return
     }
@@ -823,7 +1078,7 @@ function ResultsPanel({ data, loading = false, pagesProcessed = null, warning = 
       setTransitionView(null)
       tabTransitionTimer.current = null
     }, tabTransitionDurationMs)
-  }
+  }, [renderedView, selectedView])
 
   function renderResultView(view) {
     if (view === 'text') {
@@ -850,52 +1105,158 @@ function ResultsPanel({ data, loading = false, pagesProcessed = null, warning = 
     return () => clearInterval(intervalId)
   }, [loading])
 
-  function resetCopiedLabel() {
-    if (copyResetTimer.current) {
-      clearTimeout(copyResetTimer.current)
+  useEffect(() => {
+    if (!exportMenuOpen) {
+      return undefined
     }
 
-    copyResetTimer.current = setTimeout(() => {
-      setCopied(false)
-      copyResetTimer.current = null
-    }, 2000)
-  }
-
-  async function handleCopyJson() {
-    const json = stringifyJson(deferredData)
-
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(json)
-    } else {
-      const textArea = document.createElement('textarea')
-      textArea.value = json
-      textArea.setAttribute('readonly', '')
-      textArea.style.position = 'fixed'
-      textArea.style.opacity = '0'
-      document.body.appendChild(textArea)
-      textArea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textArea)
+    function handlePointerDown(event) {
+      if (!exportMenuRef.current?.contains(event.target)) {
+        setExportMenuOpen(false)
+        setHoveredExportOption(null)
+      }
     }
 
-    setCopied(true)
-    resetCopiedLabel()
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('touchstart', handlePointerDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('touchstart', handlePointerDown)
+    }
+  }, [exportMenuOpen])
+
+  const showExportFeedback = useCallback((message) => {
+    setExportFeedback(message)
+
+    if (exportFeedbackTimer.current) {
+      clearTimeout(exportFeedbackTimer.current)
+    }
+
+    exportFeedbackTimer.current = setTimeout(() => {
+      setExportFeedback('')
+      exportFeedbackTimer.current = null
+    }, 2200)
+  }, [])
+
+  function getTabularExport() {
+    const rows = getExportRows(deferredData)
+    const columns = getExportColumns(rows)
+
+    return { rows, columns }
   }
 
-  function handleDownloadJson() {
-    const blob = new Blob([stringifyJson(deferredData)], {
-      type: 'application/json;charset=utf-8',
+  const handleCopyJson = useCallback(async () => {
+    await copyTextToClipboard(stringifyJson(deferredData))
+    showExportFeedback('JSON copied')
+  }, [deferredData, showExportFeedback])
+
+  const handleDownloadJson = useCallback(() => {
+    downloadTextFile(
+      stringifyJson(deferredData),
+      'sudowoodo-output.json',
+      'application/json;charset=utf-8',
+    )
+    showExportFeedback('JSON downloaded')
+  }, [deferredData, showExportFeedback])
+
+  function handleDownloadCsv() {
+    const { rows, columns } = getTabularExport()
+    const csv = rowsToDelimitedText(rows, columns)
+
+    downloadTextFile(csv, 'sudowoodo-output.csv', 'text/csv;charset=utf-8')
+    showExportFeedback('CSV downloaded')
+  }
+
+  async function handleCopyTable() {
+    const { rows, columns } = getTabularExport()
+    const table = rowsToMarkdownTable(rows, columns)
+
+    await copyTextToClipboard(table)
+    showExportFeedback('Table copied')
+  }
+
+  async function handleExportToGoogleSheets() {
+    const { rows, columns } = getTabularExport()
+    const sheetReadyText = rowsToDelimitedText(rows, columns, '\t')
+    const googleSheetsUrl = buildGoogleSheetsUrl(stringifyJson(deferredData))
+
+    // Google Sheets doesn't expose a supported unauthenticated URL for cell prefill,
+    // so this opens a new sheet and places sheet-ready data on the clipboard.
+    window.open(googleSheetsUrl, '_blank', 'noopener,noreferrer')
+    await copyTextToClipboard(sheetReadyText)
+    showExportFeedback('Sheets tab opened')
+  }
+
+  async function runExportAction(action) {
+    try {
+      setExportMenuOpen(false)
+      setHoveredExportOption(null)
+      await action()
+    } catch (error) {
+      console.error(error)
+      showExportFeedback('Export failed')
+    }
+  }
+
+  async function handleExportOptionSelect(optionId) {
+    if (optionId === 'download-json') {
+      await runExportAction(handleDownloadJson)
+      return
+    }
+
+    if (optionId === 'download-csv') {
+      await runExportAction(handleDownloadCsv)
+      return
+    }
+
+    if (optionId === 'copy-json') {
+      await runExportAction(handleCopyJson)
+      return
+    }
+
+    if (optionId === 'copy-table') {
+      await runExportAction(handleCopyTable)
+      return
+    }
+
+    if (optionId === 'google-sheets') {
+      await runExportAction(handleExportToGoogleSheets)
+    }
+  }
+
+  useEffect(() => {
+    if (!onRegisterActions) {
+      return undefined
+    }
+
+    return () => onRegisterActions(null)
+  }, [onRegisterActions])
+
+  useEffect(() => {
+    if (!onRegisterActions) {
+      return undefined
+    }
+
+    onRegisterActions({
+      hasData: Boolean(deferredData),
+      selectedView,
+      canDownloadJson: Boolean(deferredData) && !loading,
+      canCopyJson: Boolean(deferredData) && !loading && selectedView === 'json',
+      switchToText: () => handleViewChange('text'),
+      switchToJson: () => handleViewChange('json'),
+      downloadJson: handleDownloadJson,
+      copyJson: handleCopyJson,
     })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-
-    link.href = url
-    link.download = 'sudowoodo-output.json'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
+  }, [
+    deferredData,
+    handleCopyJson,
+    handleDownloadJson,
+    handleViewChange,
+    loading,
+    onRegisterActions,
+    selectedView,
+  ])
 
   if (loading) {
     return (
@@ -918,7 +1279,17 @@ function ResultsPanel({ data, loading = false, pagesProcessed = null, warning = 
             <ToggleButton>JSON</ToggleButton>
           </div>
         </div>
-        <p style={styles.emptyMessage}>Run an extraction to see structured output here.</p>
+        <div style={styles.emptyState}>
+          <div style={styles.emptyStateContent}>
+            <div style={styles.emptyStateIcon} aria-hidden="true">
+              🌿
+            </div>
+            <p style={styles.emptyStateTitle}>Your extracted data will appear here</p>
+            <p style={styles.emptyStateSubtext}>
+              Upload a document and click Extract to begin
+            </p>
+          </div>
+        </div>
       </section>
     )
   }
@@ -943,12 +1314,59 @@ function ResultsPanel({ data, loading = false, pagesProcessed = null, warning = 
               JSON
             </ToggleButton>
           </div>
-          {selectedView === 'json' ? (
-            <ActionButton secondary onClick={handleCopyJson}>
-              {copied ? 'Copied!' : 'Copy JSON'}
-            </ActionButton>
-          ) : null}
-          <ActionButton onClick={handleDownloadJson}>Download JSON</ActionButton>
+          <div ref={exportMenuRef} style={styles.exportMenuWrap}>
+            <button
+              aria-expanded={exportMenuOpen}
+              aria-haspopup="menu"
+              className="sudowoodo-pressable"
+              style={joinStyles(
+                styles.actionButton,
+                styles.exportButton,
+                exportMenuOpen ? styles.exportButtonOpen : null,
+              )}
+              type="button"
+              onClick={() => setExportMenuOpen((currentValue) => !currentValue)}
+            >
+              <span style={styles.exportButtonLabel}>Export</span>
+              <svg
+                aria-hidden="true"
+                style={joinStyles(styles.chevron, exportMenuOpen ? styles.chevronOpen : null)}
+                viewBox="0 0 20 20"
+                fill="none"
+              >
+                <path
+                  d="M5 7.5 10 12.5 15 7.5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.8"
+                />
+              </svg>
+            </button>
+
+            {exportMenuOpen ? (
+              <div role="menu" style={styles.exportMenu}>
+                {exportOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    className="sudowoodo-pressable"
+                    role="menuitem"
+                    style={joinStyles(
+                      styles.exportMenuItem,
+                      hoveredExportOption === option.id ? styles.exportMenuItemHover : null,
+                    )}
+                    type="button"
+                    onClick={() => handleExportOptionSelect(option.id)}
+                    onMouseEnter={() => setHoveredExportOption(option.id)}
+                    onMouseLeave={() => setHoveredExportOption(null)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          {exportFeedback ? <span style={styles.exportFeedback}>{exportFeedback}</span> : null}
         </div>
       </div>
 
