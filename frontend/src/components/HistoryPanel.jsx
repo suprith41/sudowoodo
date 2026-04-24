@@ -50,11 +50,40 @@ const styles = {
     font: 'inherit',
     padding: '12px',
     textAlign: 'left',
+    transition:
+      'transform 180ms ease, box-shadow 220ms ease, border-color 220ms ease, background-color 220ms ease',
   },
   itemActive: {
     borderColor: 'var(--blue-accent)',
     background: 'var(--blue-accent-soft)',
     boxShadow: '0 8px 18px rgba(29, 78, 216, 0.12)',
+  },
+  documentTypeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    minWidth: 0,
+  },
+  documentTypeDot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '999px',
+    flexShrink: 0,
+  },
+  documentTypeDotInvoice: {
+    background: '#16a34a',
+  },
+  documentTypeDotReceipt: {
+    background: '#2563eb',
+  },
+  documentTypeDotMedical: {
+    background: '#9333ea',
+  },
+  documentTypeDotContract: {
+    background: '#ea580c',
+  },
+  documentTypeDotDefault: {
+    background: 'var(--text-secondary)',
   },
   documentType: {
     color: 'var(--blue-accent-text)',
@@ -71,6 +100,18 @@ const styles = {
   timestamp: {
     color: 'var(--text-secondary)',
     fontSize: '0.8rem',
+  },
+  footerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+  },
+  totalAmount: {
+    color: 'var(--text-primary)',
+    fontSize: '0.8rem',
+    fontWeight: 800,
+    whiteSpace: 'nowrap',
   },
   emptyState: {
     display: 'grid',
@@ -110,6 +151,14 @@ function isMissing(value) {
   return value === null || value === undefined || value === ''
 }
 
+function stringifyObject(value) {
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
+}
+
 function displayValue(value) {
   if (isMissing(value)) {
     return null
@@ -122,6 +171,18 @@ function displayValue(value) {
 
   if (typeof value === 'object') {
     return value.name ?? value.title ?? value.value ?? findFirstValue(value)
+  }
+
+  return String(value)
+}
+
+function toPlainString(value) {
+  if (isMissing(value)) {
+    return null
+  }
+
+  if (typeof value === 'object') {
+    return stringifyObject(value)
   }
 
   return String(value)
@@ -157,20 +218,112 @@ function findFirstValue(data) {
   return null
 }
 
-function getDocumentType(data) {
-  return prettifyLabel(data?.document_type ?? data?.type)
+function findFirstStringValue(value) {
+  if (typeof value === 'string' && value.trim()) {
+    return value
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const nestedValue = findFirstStringValue(item)
+
+      if (nestedValue) {
+        return nestedValue
+      }
+    }
+
+    return null
+  }
+
+  if (value && typeof value === 'object') {
+    for (const [key, nestedValue] of Object.entries(value)) {
+      if (key === 'document_type' || key === 'type') {
+        continue
+      }
+
+      const firstString = findFirstStringValue(nestedValue)
+
+      if (firstString) {
+        return firstString
+      }
+    }
+  }
+
+  return null
 }
 
-function getIssuer(data) {
+function getDocumentType(item) {
+  const rawDocumentType =
+    item?.data?.document_type?.value ??
+    item?.data?.document_type ??
+    item?.document_type?.value ??
+    item?.document_type ??
+    item?.data?.type?.value ??
+    item?.data?.type ??
+    item?.type?.value ??
+    item?.type
+  const text = toPlainString(rawDocumentType)
+
+  if (!text) {
+    return 'Unknown document'
+  }
+
+  if (typeof rawDocumentType === 'object') {
+    return text
+  }
+
+  return prettifyLabel(text)
+}
+
+function getDocumentTone(documentType) {
+  const normalized = String(documentType ?? '').toLowerCase()
+
+  if (normalized.includes('invoice')) {
+    return styles.documentTypeDotInvoice
+  }
+
+  if (normalized.includes('receipt')) {
+    return styles.documentTypeDotReceipt
+  }
+
+  if (normalized.includes('medical')) {
+    return styles.documentTypeDotMedical
+  }
+
+  if (normalized.includes('contract')) {
+    return styles.documentTypeDotContract
+  }
+
+  return styles.documentTypeDotDefault
+}
+
+function getIssuer(item) {
+  const data = item?.data ?? item
+
   return (
-    displayValue(data?.issuer) ??
-    displayValue(data?.issuer_name) ??
-    displayValue(data?.vendor) ??
-    displayValue(data?.seller) ??
-    displayValue(data?.store_name) ??
-    findFirstValue(data) ??
+    findFirstStringValue(data?.issuer) ??
+    findFirstStringValue(data?.issuer_name) ??
+    findFirstStringValue(data?.vendor) ??
+    findFirstStringValue(data?.seller) ??
+    findFirstStringValue(data?.store_name) ??
+    findFirstStringValue(data) ??
     'No details found'
   )
+}
+
+function getTotalAmount(item) {
+  const data = item?.data ?? item
+  const totalAmount =
+    displayValue(data?.total_amount) ??
+    displayValue(data?.total) ??
+    displayValue(data?.amount_due) ??
+    displayValue(data?.total_value)
+
+  if (!totalAmount) {
+    return null
+  }
+
+  return String(totalAmount)
 }
 
 function formatTimestamp(value) {
@@ -265,25 +418,36 @@ function HistoryPanel({ history, activeHistoryId, onSelect, onClear }) {
 
       <div style={styles.list}>
         {hasHistory ? (
-          history.map((item) => (
-            <button
-              key={item.id}
-              className={[
-                'sudowoodo-premium-card',
-                'sudowoodo-pressable',
-                animatedIds.has(item.id) ? 'sudowoodo-history-enter' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              style={joinStyles(styles.item, activeHistoryId === item.id ? styles.itemActive : null)}
-              type="button"
-              onClick={() => onSelect(item)}
-            >
-              <span style={styles.documentType}>{getDocumentType(item.data)}</span>
-              <span style={styles.issuer}>{getIssuer(item.data)}</span>
-              <span style={styles.timestamp}>{formatTimestamp(item.extractedAt)}</span>
-            </button>
-          ))
+          history.map((item) => {
+            const documentType = getDocumentType(item)
+            const totalAmount = getTotalAmount(item)
+
+            return (
+              <button
+                key={item.id}
+                className={[
+                  'sudowoodo-premium-card',
+                  'sudowoodo-pressable',
+                  animatedIds.has(item.id) ? 'sudowoodo-history-enter' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                style={joinStyles(styles.item, activeHistoryId === item.id ? styles.itemActive : null)}
+                type="button"
+                onClick={() => onSelect(item)}
+              >
+                <div style={styles.documentTypeRow}>
+                  <span style={joinStyles(styles.documentTypeDot, getDocumentTone(documentType))} />
+                  <span style={styles.documentType}>{documentType}</span>
+                </div>
+                <span style={styles.issuer}>{getIssuer(item)}</span>
+                <div style={styles.footerRow}>
+                  <span style={styles.timestamp}>{formatTimestamp(item.extractedAt)}</span>
+                  {totalAmount ? <span style={styles.totalAmount}>{totalAmount}</span> : null}
+                </div>
+              </button>
+            )
+          })
         ) : (
           <div style={styles.emptyState}>Completed extractions will appear here.</div>
         )}

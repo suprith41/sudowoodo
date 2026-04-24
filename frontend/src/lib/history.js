@@ -5,12 +5,14 @@ export function createHistoryId() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 }
 
-export function createHistoryItem(data, pagesProcessed = null, warning = null) {
+export function createHistoryItem(data, pagesProcessed = null, warning = null, metadata = {}) {
   return {
     id: createHistoryId(),
     data,
     pagesProcessed,
     warning,
+    model: metadata.model ?? null,
+    fieldsExtracted: metadata.fieldsExtracted ?? null,
     status: 'success',
     extractedAt: new Date().toISOString(),
   }
@@ -26,6 +28,8 @@ function normalizeHistoryItem(item) {
     data: item.data ?? null,
     pagesProcessed: item.pagesProcessed ?? null,
     warning: item.warning ?? null,
+    model: item.model ?? null,
+    fieldsExtracted: item.fieldsExtracted ?? null,
     status: item.status ?? 'success',
     extractedAt: item.extractedAt ?? new Date().toISOString(),
   }

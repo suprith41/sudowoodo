@@ -18,6 +18,8 @@ app = FastAPI(
     description="Document to JSON extraction pipeline powered by Groq.",
 )
 
+EXTRACTION_MODEL = "llama-4-scout"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -90,6 +92,9 @@ async def extract_document(
 
     return {
         "data": cleaned_output,
+        "model": EXTRACTION_MODEL,
+        "pages": pages_processed,
+        "fields_extracted": len(cleaned_output),
         "pages_processed": pages_processed,
         "warning": combine_warnings(document_payload.get("warning"), extraction_warning),
     }

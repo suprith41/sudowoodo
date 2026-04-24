@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const dash = '—'
 const loadingMessages = [
@@ -79,6 +79,54 @@ const styles = {
     borderRadius: '999px',
     background: 'var(--card-bg-soft)',
     color: 'var(--text-secondary)',
+    fontSize: '0.84rem',
+    fontWeight: 700,
+  },
+  dataLoadedBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: '28px',
+    padding: '4px 11px',
+    border: '1px solid #86efac',
+    borderRadius: '999px',
+    background: '#dcfce7',
+    color: '#166534',
+    fontSize: '0.84rem',
+    fontWeight: 700,
+  },
+  fieldsBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: '28px',
+    padding: '4px 11px',
+    border: '1px solid rgba(37, 99, 235, 0.18)',
+    borderRadius: '999px',
+    background: 'rgba(37, 99, 235, 0.12)',
+    color: 'var(--blue-accent-text)',
+    fontSize: '0.84rem',
+    fontWeight: 700,
+  },
+  modelBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: '28px',
+    padding: '4px 11px',
+    border: '1px solid var(--border)',
+    borderRadius: '999px',
+    background: 'var(--card-bg-soft)',
+    color: 'var(--text-secondary)',
+    fontSize: '0.84rem',
+    fontWeight: 700,
+  },
+  cachedBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: '28px',
+    padding: '4px 11px',
+    border: '1px solid #fde68a',
+    borderRadius: '999px',
+    background: '#fef3c7',
+    color: '#92400e',
     fontSize: '0.84rem',
     fontWeight: 700,
   },
@@ -237,19 +285,82 @@ const styles = {
     fontWeight: 700,
   },
   invoiceDocument: {
-    border: '1px solid var(--border-soft)',
-    borderRadius: '10px',
+    border: '1px solid var(--border)',
+    borderTop: '4px solid var(--blue-accent)',
+    borderRadius: '22px',
     overflow: 'hidden',
     background: 'var(--card-bg)',
+    boxShadow: '0 20px 40px rgba(15, 23, 42, 0.08)',
   },
   invoiceHeader: {
     display: 'flex',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: '18px',
-    padding: '28px 28px 20px',
+    gap: '24px',
+    padding: '30px 30px 24px',
     borderBottom: '1px solid var(--border-soft)',
-    background: 'var(--card-bg-soft)',
+    background:
+      'linear-gradient(180deg, rgba(29, 78, 216, 0.06) 0%, rgba(29, 78, 216, 0) 100%), var(--card-bg)',
+  },
+  invoiceBrandGroup: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '18px',
+    minWidth: 0,
+  },
+  logoPlaceholder: {
+    display: 'grid',
+    placeItems: 'center',
+    width: '58px',
+    height: '58px',
+    borderRadius: '999px',
+    background: 'linear-gradient(135deg, var(--blue-accent) 0%, #60a5fa 100%)',
+    color: '#ffffff',
+    fontSize: '1.1rem',
+    fontWeight: 900,
+    flexShrink: 0,
+    boxShadow: '0 16px 28px rgba(29, 78, 216, 0.24)',
+  },
+  invoicePartyBlock: {
+    display: 'grid',
+    gap: '10px',
+    minWidth: 0,
+  },
+  invoiceEyebrow: {
+    margin: 0,
+    color: 'var(--text-secondary)',
+    fontSize: '0.76rem',
+    fontWeight: 800,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+  },
+  issuerName: {
+    margin: 0,
+    fontSize: '1.8rem',
+    lineHeight: 1.05,
+    fontWeight: 850,
+    color: 'var(--heading)',
+    letterSpacing: '-0.03em',
+    overflowWrap: 'anywhere',
+  },
+  recipientWrap: {
+    display: 'grid',
+    gap: '4px',
+  },
+  recipientLabel: {
+    color: 'var(--text-secondary)',
+    fontSize: '0.78rem',
+    fontWeight: 800,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+  },
+  recipientName: {
+    margin: 0,
+    color: 'var(--text-primary)',
+    fontSize: '1rem',
+    fontWeight: 650,
+    lineHeight: 1.45,
+    overflowWrap: 'anywhere',
   },
   invoiceTitle: {
     margin: 0,
@@ -257,6 +368,35 @@ const styles = {
     lineHeight: 1.1,
     fontWeight: 750,
     color: 'var(--text-primary)',
+  },
+  invoiceMetaCard: {
+    minWidth: '220px',
+    padding: '16px 18px',
+    border: '1px solid var(--border)',
+    borderRadius: '18px',
+    background: 'var(--card-bg-soft)',
+  },
+  invoiceMetaGrid: {
+    display: 'grid',
+    gap: '12px',
+  },
+  invoiceMetaItem: {
+    display: 'grid',
+    gap: '4px',
+  },
+  invoiceMetaLabel: {
+    color: 'var(--text-secondary)',
+    fontSize: '0.76rem',
+    fontWeight: 800,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+  },
+  invoiceMetaValue: {
+    color: 'var(--text-primary)',
+    fontSize: '0.98rem',
+    fontWeight: 800,
+    lineHeight: 1.35,
+    overflowWrap: 'anywhere',
   },
   documentBadge: {
     display: 'inline-flex',
@@ -272,9 +412,9 @@ const styles = {
   },
   detailsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: '16px 28px',
-    padding: '24px 28px 28px',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: '16px',
+    padding: '0 30px 28px',
   },
   detailItem: {
     minWidth: 0,
@@ -296,8 +436,15 @@ const styles = {
     lineHeight: 1.45,
     fontWeight: 700,
   },
+  fieldCard: {
+    minWidth: 0,
+    padding: '14px 16px',
+    border: '1px solid var(--border-soft)',
+    borderRadius: '16px',
+    background: 'var(--card-bg-soft)',
+  },
   section: {
-    padding: '0 28px 28px',
+    padding: '0 30px 28px',
   },
   sectionTitle: {
     margin: '0 0 12px',
@@ -305,19 +452,24 @@ const styles = {
     fontSize: '1rem',
     fontWeight: 700,
   },
+  objectFieldGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '14px',
+  },
   tableWrap: {
     width: '100%',
     overflowX: 'auto',
     border: '1px solid var(--border)',
-    borderRadius: '8px',
+    borderRadius: '18px',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
-    minWidth: '620px',
+    minWidth: '680px',
   },
   tableHeader: {
-    background: 'var(--card-bg-soft)',
+    background: 'rgba(29, 78, 216, 0.08)',
     color: 'var(--text-primary)',
     fontSize: '0.9rem',
     fontWeight: 700,
@@ -332,6 +484,8 @@ const styles = {
     borderBottom: '1px solid var(--border-soft)',
     color: 'var(--text-primary)',
     verticalAlign: 'top',
+    whiteSpace: 'normal',
+    overflowWrap: 'anywhere',
   },
   tableCellMuted: {
     padding: '13px 14px',
@@ -352,17 +506,20 @@ const styles = {
     textAlign: 'right',
     whiteSpace: 'nowrap',
   },
-  totalsSection: {
+  summarySection: {
     display: 'flex',
     justifyContent: 'flex-end',
-    padding: '0 28px 30px',
+    padding: '0 30px 30px',
   },
-  totalsBox: {
+  summaryBox: {
     width: 'min(100%, 340px)',
-    borderTop: '1px solid var(--border-soft)',
-    paddingTop: '12px',
+    border: '1px solid var(--border)',
+    borderRadius: '18px',
+    padding: '18px 20px',
+    background: 'var(--card-bg-soft)',
+    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.24)',
   },
-  totalRow: {
+  summaryRow: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -370,7 +527,7 @@ const styles = {
     padding: '8px 0',
     color: 'var(--text-primary)',
   },
-  totalAmountRow: {
+  summaryTotalRow: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -379,8 +536,14 @@ const styles = {
     paddingTop: '14px',
     borderTop: '1px solid var(--border)',
     color: 'var(--text-primary)',
-    fontSize: '1.2rem',
+    fontSize: '1.1rem',
     fontWeight: 800,
+  },
+  summaryTotalValue: {
+    color: 'var(--blue-accent)',
+    fontSize: '1.45rem',
+    fontWeight: 900,
+    letterSpacing: '-0.03em',
   },
   jsonResults: {
     margin: 0,
@@ -845,70 +1008,386 @@ function buildGoogleSheetsUrl(json) {
   return `https://docs.google.com/spreadsheets/create?usp=sheets_web#sudowoodo-json=${encodeURIComponent(json)}`
 }
 
-function InvoiceTextView({ data }) {
+function prettifyLabel(value) {
+  return String(value)
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+}
+
+function unwrapStructuredValue(value) {
+  if (
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    'value' in value
+  ) {
+    return value.value
+  }
+
+  return isConfidenceWrapper(value) ? value.value : value
+}
+
+function isRenderableObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function formatRenderableValue(value) {
+  const normalizedValue = unwrapStructuredValue(value)
+
+  if (normalizedValue === null || normalizedValue === undefined || normalizedValue === '') {
+    return dash
+  }
+
+  if (typeof normalizedValue === 'string' || typeof normalizedValue === 'number') {
+    return String(normalizedValue)
+  }
+
+  if (typeof normalizedValue === 'boolean') {
+    return normalizedValue ? 'True' : 'False'
+  }
+
+  if (Array.isArray(normalizedValue)) {
+    return normalizedValue.length ? JSON.stringify(normalizedValue) : dash
+  }
+
+  if (isRenderableObject(normalizedValue)) {
+    return JSON.stringify(normalizedValue)
+  }
+
+  return String(normalizedValue)
+}
+
+function getObjectSubFields(value, prefix = []) {
+  const normalizedValue = unwrapStructuredValue(value)
+
+  if (!isRenderableObject(normalizedValue)) {
+    return prefix.length
+      ? [{ label: prefix.map(prettifyLabel).join(' / '), value: normalizedValue }]
+      : []
+  }
+
+  return Object.entries(normalizedValue).flatMap(([key, nestedValue]) => {
+    const nextPrefix = [...prefix, key]
+    const unwrappedNestedValue = unwrapStructuredValue(nestedValue)
+
+    if (isRenderableObject(unwrappedNestedValue)) {
+      return getObjectSubFields(unwrappedNestedValue, nextPrefix)
+    }
+
+    return [
+      {
+        label: nextPrefix.map(prettifyLabel).join(' / '),
+        value: unwrappedNestedValue,
+      },
+    ]
+  })
+}
+
+function getArrayTableColumns(items) {
+  const seen = new Set()
+
+  items.forEach((item) => {
+    const normalizedItem = unwrapStructuredValue(item)
+
+    if (isRenderableObject(normalizedItem)) {
+      Object.keys(normalizedItem).forEach((key) => seen.add(key))
+      return
+    }
+
+    seen.add('value')
+  })
+
+  return seen.size ? Array.from(seen) : ['value']
+}
+
+function getArrayTableConfig(label, items) {
+  const columns = getArrayTableColumns(items)
+  const normalizedLabel = String(label).toLowerCase()
+  const isLineItemsTable = normalizedLabel === 'line items'
+
+  if (isLineItemsTable && columns.length === 1 && columns[0] === 'value') {
+    return {
+      columns: ['description'],
+      getRowValue: (row, column) => {
+        if (column === 'description') {
+          return row.value
+        }
+
+        return row[column]
+      },
+    }
+  }
+
+  return {
+    columns,
+    getRowValue: (row, column) => row[column],
+  }
+}
+
+function getFirstPresentKey(source, keys) {
+  for (const key of keys) {
+    if (!isMissing(source?.[key])) {
+      return key
+    }
+  }
+
+  return null
+}
+
+function getLogoInitials(value) {
+  const text = String(value ?? '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('')
+
+  return text || 'SW'
+}
+
+function getLineItemDescription(item) {
+  return formatRenderableValue(
+    item?.description ??
+      item?.name ??
+      item?.title ??
+      item?.service ??
+      item?.item ??
+      item?.term ??
+      item?.medication ??
+      item?.value ??
+      dash,
+  )
+}
+
+function getLineItemQuantity(item) {
+  return formatRenderableValue(
+    item?.quantity ??
+      item?.qty ??
+      item?.count ??
+      item?.units ??
+      item?.hours ??
+      item?.dosage ??
+      dash,
+  )
+}
+
+function getLineItemUnitPrice(item) {
+  const value =
+    item?.unit_price ??
+    item?.unitPrice ??
+    item?.price ??
+    item?.rate ??
+    item?.cost ??
+    null
+
+  return value === null || value === undefined || value === ''
+    ? dash
+    : formatMoney(value)
+}
+
+function getLineItemAmount(item) {
+  const value =
+    item?.amount ??
+    item?.total ??
+    item?.line_total ??
+    item?.extended_price ??
+    item?.price ??
+    null
+
+  return value === null || value === undefined || value === ''
+    ? dash
+    : formatMoney(value)
+}
+
+function renderFieldCard(label, value, key) {
+  return (
+    <div key={key ?? label} style={styles.fieldCard}>
+      <span style={styles.detailLabel}>{label}</span>
+      <span style={styles.detailValueStrong}>{formatRenderableValue(value)}</span>
+    </div>
+  )
+}
+
+function renderArrayTable(label, value) {
+  const normalizedArray = Array.isArray(unwrapStructuredValue(value))
+    ? unwrapStructuredValue(value)
+    : []
+  const { columns, getRowValue } = getArrayTableConfig(label, normalizedArray)
+
+  return (
+    <div>
+      <h4 style={styles.sectionTitle}>{label}</h4>
+      <div style={styles.tableWrap}>
+        <table style={styles.table}>
+          <thead style={styles.tableHeader}>
+            <tr>
+              {columns.map((column) => (
+                <th key={column} style={styles.tableHeaderCell}>
+                  {prettifyLabel(column)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {normalizedArray.length ? (
+              normalizedArray.map((item, index) => {
+                const normalizedItem = unwrapStructuredValue(item)
+                const row =
+                  isRenderableObject(normalizedItem) ? normalizedItem : { value: normalizedItem }
+                const rowStyle = {
+                  background: index % 2 === 0 ? 'var(--card-bg)' : 'var(--card-bg-soft)',
+                }
+
+                return (
+                  <tr key={`${label}-${index}`} style={rowStyle}>
+                    {columns.map((column) => (
+                      <td key={column} style={styles.tableCell}>
+                        {formatRenderableValue(getRowValue(row, column))}
+                      </td>
+                    ))}
+                  </tr>
+                )
+              })
+            ) : (
+              <tr>
+                <td colSpan={columns.length} style={styles.tableCellMuted}>
+                  {dash}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function GenericTextView({ data }) {
+  const entries = Object.entries(data ?? {})
+  const lineItemsKey = getFirstPresentKey(data, ['line_items', 'items', 'entries', 'rows'])
+  const lineItems = normalizeLineItems(lineItemsKey ? data?.[lineItemsKey] ?? [] : [])
   const documentType = prettifyDocumentType(getFirstValue(data, ['document_type', 'type']))
-  const documentNumber = getFirstValue(data, [
+  const issuer = getPartyName(
+    getFirstValue(data, ['issuer', 'issuer_name', 'vendor', 'seller', 'store_name', 'hospital', 'party_a']),
+  )
+  const recipient = getPartyName(
+    getFirstValue(data, ['recipient', 'recipient_name', 'customer', 'buyer', 'to', 'patient_name', 'party_b']),
+  )
+  const documentNumber = displayValue(
+    getFirstValue(data, ['document_number', 'invoice_number', 'number', 'id', 'record_number']),
+  )
+  const documentDate = formatDate(
+    getFirstValue(data, ['document_date', 'invoice_date', 'statement_date', 'date']),
+  )
+  const subtotal = getFirstValue(data, ['subtotal', 'sub_total'])
+  const tax = getFirstValue(data, ['tax', 'tax_amount'])
+  const totalAmount = getFirstValue(data, ['total_amount', 'total', 'amount_due', 'total_value'])
+  const primaryKeys = new Set([
+    'document_type',
+    'type',
+    'issuer',
+    'issuer_name',
+    'vendor',
+    'seller',
+    'store_name',
+    'hospital',
+    'party_a',
+    'recipient',
+    'recipient_name',
+    'customer',
+    'buyer',
+    'to',
+    'patient_name',
+    'party_b',
     'document_number',
     'invoice_number',
     'number',
     'id',
+    'record_number',
+    'document_date',
+    'invoice_date',
+    'statement_date',
+    'date',
+    'subtotal',
+    'sub_total',
+    'tax',
+    'tax_amount',
+    'total_amount',
+    'total',
+    'amount_due',
+    'total_value',
   ])
-  const documentDate = getFirstValue(data, ['document_date', 'invoice_date', 'date'])
-  const issuer = getFirstValue(data, ['issuer', 'issuer_name', 'vendor', 'seller', 'from'])
-  const recipient = getFirstValue(data, ['recipient', 'recipient_name', 'customer', 'buyer', 'to'])
-  const lineItems = normalizeLineItems(
-    getFirstValue(data, ['line_items', 'items', 'entries', 'rows']) ?? [],
-  )
-  const subtotal = getFirstValue(data, ['subtotal', 'sub_total'])
-  const tax = getFirstValue(data, ['tax', 'tax_amount'])
-  const totalAmount = getFirstValue(data, ['total_amount', 'total', 'amount_due'])
+
+  if (lineItemsKey) {
+    primaryKeys.add(lineItemsKey)
+  }
+
+  const supplementalPrimitiveEntries = entries.filter(([key, value]) => {
+    if (primaryKeys.has(key)) {
+      return false
+    }
+
+    const normalizedValue = unwrapStructuredValue(value)
+    return !Array.isArray(normalizedValue) && !isRenderableObject(normalizedValue)
+  })
+  const supplementalObjectEntries = entries.filter(([key, value]) => {
+    if (primaryKeys.has(key)) {
+      return false
+    }
+
+    return isRenderableObject(unwrapStructuredValue(value))
+  })
+  const supplementalArrayEntries = entries.filter(([key, value]) => {
+    if (primaryKeys.has(key)) {
+      return false
+    }
+
+    return Array.isArray(unwrapStructuredValue(value))
+  })
 
   return (
     <div className="sudowoodo-premium-card" style={styles.invoiceDocument}>
       <div style={styles.invoiceHeader}>
-        <div>
-          <h3 style={styles.invoiceTitle}>Invoice</h3>
+        <div style={styles.invoiceBrandGroup}>
+          <div style={styles.logoPlaceholder}>{getLogoInitials(issuer === dash ? documentType : issuer)}</div>
+          <div style={styles.invoicePartyBlock}>
+            <p style={styles.invoiceEyebrow}>{documentType}</p>
+            <h3 style={styles.issuerName}>{issuer}</h3>
+            <div style={styles.recipientWrap}>
+              <span style={styles.recipientLabel}>Recipient</span>
+              <p style={styles.recipientName}>{recipient}</p>
+            </div>
+          </div>
         </div>
-        <span style={styles.documentBadge}>{documentType}</span>
+        <div style={styles.invoiceMetaCard}>
+          <div style={styles.invoiceMetaGrid}>
+            <div style={styles.invoiceMetaItem}>
+              <span style={styles.invoiceMetaLabel}>Invoice Number</span>
+              <span style={styles.invoiceMetaValue}>{documentNumber}</span>
+            </div>
+            <div style={styles.invoiceMetaItem}>
+              <span style={styles.invoiceMetaLabel}>Invoice Date</span>
+              <span style={styles.invoiceMetaValue}>{documentDate}</span>
+            </div>
+            <div style={styles.invoiceMetaItem}>
+              <span style={styles.invoiceMetaLabel}>Document Type</span>
+              <span style={styles.documentBadge}>{documentType}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div style={styles.confidenceLegend}>
-        <span style={styles.confidenceLegendItem}>
-          <span style={joinStyles(styles.confidenceDot, styles.confidenceDotHigh)} />
-          <span>High</span>
-        </span>
-        <span style={styles.confidenceLegendItem}>
-          <span style={joinStyles(styles.confidenceDot, styles.confidenceDotMedium)} />
-          <span>Medium</span>
-        </span>
-        <span style={styles.confidenceLegendItem}>
-          <span style={joinStyles(styles.confidenceDot, styles.confidenceDotLow)} />
-          <span>Low confidence</span>
-        </span>
-      </div>
-
-      <div style={styles.detailsGrid}>
-        <div style={styles.detailItem}>
-          <span style={styles.detailLabel}>Document Type</span>
-          <span style={styles.documentBadge}>{documentType}</span>
+      {supplementalPrimitiveEntries.length ? (
+        <div style={styles.detailsGrid}>
+          {supplementalPrimitiveEntries.map(([key, value]) =>
+            renderFieldCard(prettifyLabel(key), unwrapStructuredValue(value), key),
+          )}
         </div>
-        <div style={styles.detailItem}>
-          <span style={styles.detailLabel}>Document Number</span>
-          <ConfidenceValue field={documentNumber} />
+      ) : (
+        <div style={styles.section}>
+          <p style={styles.emptyMessage}>Prepared invoice-style view from the extracted fields.</p>
         </div>
-        <div style={styles.detailItem}>
-          <span style={styles.detailLabel}>Document Date</span>
-          <ConfidenceValue field={documentDate} formatter={formatDate} />
-        </div>
-        <div style={styles.detailItem}>
-          <span style={styles.detailLabel}>Issuer name</span>
-          <ConfidenceValue field={issuer} formatter={getPartyName} strong />
-        </div>
-        <div style={styles.detailItem}>
-          <span style={styles.detailLabel}>Recipient name</span>
-          <ConfidenceValue field={recipient} formatter={getPartyName} strong />
-        </div>
-      </div>
+      )}
 
       <div style={styles.section}>
         <h4 style={styles.sectionTitle}>Line Items</h4>
@@ -916,7 +1395,6 @@ function InvoiceTextView({ data }) {
           <table style={styles.table}>
             <thead style={styles.tableHeader}>
               <tr>
-                <th style={joinStyles(styles.tableHeaderCell, styles.numberCell)}>#</th>
                 <th style={styles.tableHeaderCell}>Description</th>
                 <th style={joinStyles(styles.tableHeaderCell, styles.quantityCell)}>Quantity</th>
                 <th style={joinStyles(styles.tableHeaderCell, styles.moneyCell)}>Unit Price</th>
@@ -927,33 +1405,27 @@ function InvoiceTextView({ data }) {
               {lineItems.length ? (
                 lineItems.map((item, index) => {
                   const rowStyle = {
-                    background:
-                      index % 2 === 0 ? 'var(--card-bg)' : 'var(--card-bg-soft)',
+                    background: index % 2 === 0 ? 'var(--card-bg)' : 'var(--card-bg-soft)',
                   }
 
                   return (
-                    <tr key={`${index}-${displayValue(item.description)}`} style={rowStyle}>
-                      <td style={joinStyles(styles.tableCellMuted, styles.numberCell)}>
-                        {index + 1}
-                      </td>
-                      <td style={styles.tableCell}>
-                        <ConfidenceValue field={item.description} />
-                      </td>
+                    <tr key={`line-item-${index}`} style={rowStyle}>
+                      <td style={styles.tableCell}>{getLineItemDescription(item)}</td>
                       <td style={joinStyles(styles.tableCell, styles.quantityCell)}>
-                        <ConfidenceValue field={item.quantity} />
+                        {getLineItemQuantity(item)}
                       </td>
                       <td style={joinStyles(styles.tableCell, styles.moneyCell)}>
-                        <ConfidenceValue field={item.unit_price} formatter={formatMoney} />
+                        {getLineItemUnitPrice(item)}
                       </td>
                       <td style={joinStyles(styles.tableCell, styles.moneyCell)}>
-                        <ConfidenceValue field={item.amount} formatter={formatMoney} />
+                        {getLineItemAmount(item)}
                       </td>
                     </tr>
                   )
                 })
               ) : (
                 <tr>
-                  <td style={styles.tableCellMuted} colSpan={5}>
+                  <td colSpan={4} style={styles.tableCellMuted}>
                     {dash}
                   </td>
                 </tr>
@@ -963,22 +1435,43 @@ function InvoiceTextView({ data }) {
         </div>
       </div>
 
-      <div style={styles.totalsSection}>
-        <div style={styles.totalsBox}>
-          <div style={styles.totalRow}>
+      <div style={styles.summarySection}>
+        <div style={styles.summaryBox}>
+          <div style={styles.summaryRow}>
             <span>Subtotal</span>
-            <ConfidenceValue field={subtotal} formatter={formatMoney} />
+            <span>{formatMoney(subtotal)}</span>
           </div>
-          <div style={styles.totalRow}>
+          <div style={styles.summaryRow}>
             <span>Tax</span>
-            <ConfidenceValue field={tax} formatter={formatMoney} />
+            <span>{formatMoney(tax)}</span>
           </div>
-          <div style={styles.totalAmountRow}>
-            <span>Total Amount</span>
-            <ConfidenceValue field={totalAmount} formatter={formatMoney} />
+          <div style={styles.summaryTotalRow}>
+            <span>Total</span>
+            <span style={styles.summaryTotalValue}>{formatMoney(totalAmount)}</span>
           </div>
         </div>
       </div>
+
+      {supplementalObjectEntries.map(([key, value]) => {
+        const subFields = getObjectSubFields(value)
+
+        return (
+          <div key={key} style={styles.section}>
+            <h4 style={styles.sectionTitle}>{prettifyLabel(key)}</h4>
+            <div style={styles.objectFieldGrid}>
+              {subFields.length
+                ? subFields.map((field) => renderFieldCard(field.label, field.value, `${key}-${field.label}`))
+                : renderFieldCard(prettifyLabel(key), dash, key)}
+            </div>
+          </div>
+        )
+      })}
+
+      {supplementalArrayEntries.map(([key, value]) => (
+        <div key={key} style={styles.section}>
+          {renderArrayTable(prettifyLabel(key), value)}
+        </div>
+      ))}
     </div>
   )
 }
@@ -1012,8 +1505,13 @@ function ResultsPanel({
   loading = false,
   pagesProcessed = null,
   warning = null,
+  model = null,
+  fieldsExtracted = null,
+  cached = false,
   onRegisterActions = null,
 }) {
+  console.log('ResultsPanel received data:', data)
+
   const [selectedView, setSelectedView] = useState('text')
   const [renderedView, setRenderedView] = useState('text')
   const [transitionView, setTransitionView] = useState(null)
@@ -1022,10 +1520,14 @@ function ResultsPanel({
   const [hoveredExportOption, setHoveredExportOption] = useState(null)
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
   const [contentAnimationKey, setContentAnimationKey] = useState(0)
-  const deferredData = useDeferredValue(data)
   const exportFeedbackTimer = useRef(null)
   const exportMenuRef = useRef(null)
   const tabTransitionTimer = useRef(null)
+  const hasData =
+    Boolean(data) &&
+    typeof data === 'object' &&
+    Object.keys(data).length > 0
+  const displayedFieldCount = fieldsExtracted ?? Object.keys(data ?? {}).length
 
   useEffect(() => {
     return () => {
@@ -1040,19 +1542,19 @@ function ResultsPanel({
   }, [])
 
   useEffect(() => {
-    if (!loading && !deferredData) {
+    if (!loading && !hasData) {
       setSelectedView('text')
       setRenderedView('text')
       setTransitionView(null)
       setExportMenuOpen(false)
     }
-  }, [deferredData, loading])
+  }, [hasData, loading])
 
   useEffect(() => {
-    if (deferredData) {
+    if (hasData) {
       setContentAnimationKey((currentKey) => currentKey + 1)
     }
-  }, [deferredData])
+  }, [data, hasData])
 
   const handleViewChange = useCallback((nextView) => {
     if (nextView === selectedView) {
@@ -1082,12 +1584,12 @@ function ResultsPanel({
 
   function renderResultView(view) {
     if (view === 'text') {
-      return <InvoiceTextView data={deferredData} />
+      return <GenericTextView data={data} />
     }
 
     return (
       <pre className="sudowoodo-premium-card" style={styles.jsonResults}>
-        {renderHighlightedJson(deferredData)}
+        {renderHighlightedJson(data)}
       </pre>
     )
   }
@@ -1140,25 +1642,25 @@ function ResultsPanel({
   }, [])
 
   function getTabularExport() {
-    const rows = getExportRows(deferredData)
+    const rows = getExportRows(data)
     const columns = getExportColumns(rows)
 
     return { rows, columns }
   }
 
   const handleCopyJson = useCallback(async () => {
-    await copyTextToClipboard(stringifyJson(deferredData))
+    await copyTextToClipboard(stringifyJson(data))
     showExportFeedback('JSON copied')
-  }, [deferredData, showExportFeedback])
+  }, [data, showExportFeedback])
 
   const handleDownloadJson = useCallback(() => {
     downloadTextFile(
-      stringifyJson(deferredData),
+      stringifyJson(data),
       'sudowoodo-output.json',
       'application/json;charset=utf-8',
     )
     showExportFeedback('JSON downloaded')
-  }, [deferredData, showExportFeedback])
+  }, [data, showExportFeedback])
 
   function handleDownloadCsv() {
     const { rows, columns } = getTabularExport()
@@ -1179,7 +1681,7 @@ function ResultsPanel({
   async function handleExportToGoogleSheets() {
     const { rows, columns } = getTabularExport()
     const sheetReadyText = rowsToDelimitedText(rows, columns, '\t')
-    const googleSheetsUrl = buildGoogleSheetsUrl(stringifyJson(deferredData))
+    const googleSheetsUrl = buildGoogleSheetsUrl(stringifyJson(data))
 
     // Google Sheets doesn't expose a supported unauthenticated URL for cell prefill,
     // so this opens a new sheet and places sheet-ready data on the clipboard.
@@ -1239,17 +1741,17 @@ function ResultsPanel({
     }
 
     onRegisterActions({
-      hasData: Boolean(deferredData),
+      hasData,
       selectedView,
-      canDownloadJson: Boolean(deferredData) && !loading,
-      canCopyJson: Boolean(deferredData) && !loading && selectedView === 'json',
+      canDownloadJson: hasData && !loading,
+      canCopyJson: hasData && !loading && selectedView === 'json',
       switchToText: () => handleViewChange('text'),
       switchToJson: () => handleViewChange('json'),
       downloadJson: handleDownloadJson,
       copyJson: handleCopyJson,
     })
   }, [
-    deferredData,
+    hasData,
     handleCopyJson,
     handleDownloadJson,
     handleViewChange,
@@ -1269,7 +1771,7 @@ function ResultsPanel({
     )
   }
 
-  if (!deferredData) {
+  if (!hasData) {
     return (
       <section style={styles.emptyPanel}>
         <div style={styles.topbar}>
@@ -1299,11 +1801,15 @@ function ResultsPanel({
       <div style={styles.topbar}>
         <div style={styles.topbarInfo}>
           <h2 style={styles.heading}>Results</h2>
-          {pagesProcessed ? (
-            <div style={styles.metaRow}>
+          <div style={styles.metaRow}>
+            <span style={styles.dataLoadedBadge}>✓ Data loaded</span>
+            <span style={styles.fieldsBadge}>{displayedFieldCount} fields extracted</span>
+            {pagesProcessed ? (
               <span style={styles.pagesBadge}>{pagesProcessed} pages processed</span>
-            </div>
-          ) : null}
+            ) : null}
+            {model ? <span style={styles.modelBadge}>{model}</span> : null}
+            {cached ? <span style={styles.cachedBadge}>⚡ Cached result</span> : null}
+          </div>
         </div>
         <div style={styles.topbarActions}>
           <div style={styles.toggle}>

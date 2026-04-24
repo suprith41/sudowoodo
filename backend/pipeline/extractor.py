@@ -5,10 +5,13 @@ from pathlib import Path
 
 from openai import BadRequestError, OpenAI
 
+from pipeline.validator import clean_and_validate_json
+
 
 MODEL_NAME = "meta-llama/llama-4-scout-17b-16e-instruct"
 BASE_URL = "https://api.groq.com/openai/v1"
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "extraction.txt"
+MAX_EXTRACTION_ATTEMPTS = 3
 SCHEMA_DETECTION_PROMPT = (
     "Look at this document and return ONLY a JSON schema object with the fields you can see. "
     "Return field names as keys and the data type as values (string, float, int, date, array). "
@@ -29,7 +32,11 @@ def _build_client() -> OpenAI:
     return OpenAI(api_key=api_key, base_url=BASE_URL)
 
 
-def _build_messages(document_payload: dict[str, object], schema: object) -> list[dict[str, object]]:
+def _build_messages(
+    document_payload: dict[str, object],
+    schema: object,
+    extra_instruction: str | None = None,
+) -> list[dict[str, object]]:
     pages = document_payload["pages"]
     intro_text = (
         f"{load_extraction_prompt()}\n\n"
@@ -40,6 +47,8 @@ def _build_messages(document_payload: dict[str, object], schema: object) -> list
         "Use this target JSON schema/example exactly. Keep the same top-level shape and keys:\n"
         f"{json.dumps(schema, indent=2)}"
     )
+    if extra_instruction:
+        intro_text = f"{intro_text}\n\n{extra_instruction}"
 
     content: list[dict[str, object]] = [{"type": "text", "text": intro_text}]
     for page in pages:
@@ -85,11 +94,19 @@ def _is_token_limit_error(exc: Exception) -> bool:
     return any(phrase in error_text for phrase in token_limit_phrases)
 
 
-def _request_extraction(document_payload: dict[str, object], schema: object) -> str:
+def _request_extraction(
+    document_payload: dict[str, object],
+    schema: object,
+    extra_instruction: str | None = None,
+) -> str:
     client = _build_client()
     request_payload = {
         "model": MODEL_NAME,
-        "messages": _build_messages(document_payload=document_payload, schema=schema),
+        "messages": _build_messages(
+            document_payload=document_payload,
+            schema=schema,
+            extra_instruction=extra_instruction,
+        ),
         "temperature": 0,
     }
     if isinstance(schema, dict):
@@ -106,12 +123,53 @@ def _request_extraction(document_payload: dict[str, object], schema: object) -> 
     return message_content
 
 
+def _request_extraction_with_retries(document_payload: dict[str, object], schema: object) -> str:
+    last_error: Exception | None = None
+
+    for attempt_number in range(1, MAX_EXTRACTION_ATTEMPTS + 1):
+        extra_instruction = None
+        if attempt_number == MAX_EXTRACTION_ATTEMPTS:
+            extra_instruction = (
+                "Previous attempt failed. Make sure to return ONLY valid JSON."
+            )
+
+        try:
+            raw_output = _request_extraction(
+                document_payload=document_payload,
+                schema=schema,
+                extra_instruction=extra_instruction,
+            )
+            clean_and_validate_json(raw_output=raw_output, schema=schema)
+            return raw_output
+        except BadRequestError as exc:
+            if _is_token_limit_error(exc):
+                raise
+            last_error = exc
+        except Exception as exc:
+            last_error = exc
+
+        if attempt_number < MAX_EXTRACTION_ATTEMPTS:
+            print(
+                "Retrying extraction attempt "
+                f"{attempt_number + 1}/{MAX_EXTRACTION_ATTEMPTS} "
+                f"for {document_payload['filename']}"
+            )
+
+    if last_error is None:
+        raise RuntimeError("Extraction failed without an error message.")
+
+    raise RuntimeError(str(last_error)) from last_error
+
+
 def extract_with_groq(document_payload: dict[str, object], schema: object) -> tuple[str, int, str | None]:
     pages = document_payload["pages"]
     fallback_page_count = min(5, len(pages))
 
     try:
-        return _request_extraction(document_payload=document_payload, schema=schema), len(pages), None
+        return _request_extraction_with_retries(
+            document_payload=document_payload,
+            schema=schema,
+        ), len(pages), None
     except BadRequestError as exc:
         if not _is_token_limit_error(exc) or len(pages) <= fallback_page_count:
             raise RuntimeError(str(exc)) from exc
@@ -126,7 +184,10 @@ def extract_with_groq(document_payload: dict[str, object], schema: object) -> tu
     )
 
     try:
-        raw_output = _request_extraction(document_payload=fallback_payload, schema=schema)
+        raw_output = _request_extraction_with_retries(
+            document_payload=fallback_payload,
+            schema=schema,
+        )
     except BadRequestError as exc:
         raise RuntimeError(str(exc)) from exc
 

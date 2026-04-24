@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import axios from 'axios'
-import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import ApiDocs from './ApiDocs'
 import './App.css'
 import BatchProcessor from './BatchProcessor'
@@ -275,11 +275,95 @@ const styles = {
     color: 'var(--text-primary)',
     padding: '28px max(16px, calc((100vw - 1240px) / 2)) 40px',
   },
+  appShellStack: {
+    display: 'grid',
+    gap: '24px',
+  },
   themeToggle: {
     position: 'fixed',
     top: '18px',
     right: '18px',
     zIndex: 20,
+    display: 'grid',
+    placeItems: 'center',
+    width: '44px',
+    height: '44px',
+    border: '1px solid var(--border)',
+    borderRadius: '999px',
+    background: 'var(--card-bg)',
+    color: 'var(--blue-accent)',
+    cursor: 'pointer',
+    boxShadow: 'var(--shadow)',
+  },
+  appNavbar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '18px',
+    paddingBottom: '18px',
+    borderBottom: '1px solid var(--border)',
+  },
+  appNavbarMobile: {
+    flexWrap: 'wrap',
+  },
+  appNavbarBrand: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '12px',
+    color: 'var(--text-primary)',
+    textDecoration: 'none',
+  },
+  appNavbarLogo: {
+    display: 'grid',
+    placeItems: 'center',
+    width: '42px',
+    height: '42px',
+    borderRadius: '14px',
+    background: 'linear-gradient(135deg, var(--blue-accent) 0%, #60a5fa 100%)',
+    color: '#ffffff',
+    fontSize: '1.05rem',
+    fontWeight: 900,
+    boxShadow: '0 14px 28px rgba(29, 78, 216, 0.22)',
+  },
+  appNavbarBrandText: {
+    display: 'grid',
+    gap: '2px',
+  },
+  appNavbarTitle: {
+    fontSize: '1rem',
+    fontWeight: 900,
+    letterSpacing: '-0.02em',
+  },
+  appNavbarSubtitle: {
+    color: 'var(--text-secondary)',
+    fontSize: '0.8rem',
+    fontWeight: 700,
+  },
+  appNavbarLinks: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'wrap',
+  },
+  appNavbarLink: {
+    padding: '8px 12px',
+    borderRadius: '999px',
+    color: 'var(--text-secondary)',
+    fontSize: '0.92rem',
+    fontWeight: 800,
+    textDecoration: 'none',
+  },
+  appNavbarLinkActive: {
+    background: 'var(--blue-accent-soft)',
+    color: 'var(--blue-accent-text)',
+  },
+  appNavbarRight: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: '12px',
+  },
+  appThemeToggle: {
     display: 'grid',
     placeItems: 'center',
     width: '44px',
@@ -460,6 +544,22 @@ function joinStyles(...styleObjects) {
   return Object.assign({}, ...styleObjects)
 }
 
+function countExtractedFields(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return 0
+  }
+
+  return Object.keys(data).length
+}
+
+function buildExtractionCacheKey(file, schemaText) {
+  if (!file?.name) {
+    return null
+  }
+
+  return `${file.name}::${schemaText}`
+}
+
 function loadStoredTheme() {
   try {
     const storedTheme = localStorage.getItem(themeStorageKey)
@@ -560,12 +660,59 @@ function AppFooter() {
   )
 }
 
+function AppNavbar({ isMobile = false, theme, toggleTheme }) {
+  const navLinkStyle = ({ isActive }) =>
+    joinStyles(styles.appNavbarLink, isActive ? styles.appNavbarLinkActive : null)
+
+  return (
+    <nav style={joinStyles(styles.appNavbar, isMobile ? styles.appNavbarMobile : null)}>
+      <NavLink style={styles.appNavbarBrand} to="/app">
+        <span aria-hidden="true" style={styles.appNavbarLogo}>
+          S
+        </span>
+        <span style={styles.appNavbarBrandText}>
+          <span style={styles.appNavbarTitle}>Sudowoodo</span>
+          <span style={styles.appNavbarSubtitle}>Structured extraction studio</span>
+        </span>
+      </NavLink>
+      <div style={styles.appNavbarLinks}>
+        <NavLink style={navLinkStyle} to="/app">
+          App
+        </NavLink>
+        <NavLink style={navLinkStyle} to="/dashboard">
+          Dashboard
+        </NavLink>
+        <NavLink style={navLinkStyle} to="/batch">
+          Batch
+        </NavLink>
+        <NavLink style={navLinkStyle} to="/docs">
+          API Docs
+        </NavLink>
+      </div>
+      <div style={styles.appNavbarRight}>
+        <button
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="sudowoodo-pressable"
+          style={styles.appThemeToggle}
+          type="button"
+          onClick={toggleTheme}
+        >
+          <ThemeIcon theme={theme} />
+        </button>
+      </div>
+    </nav>
+  )
+}
+
 function ExtractionApp({ isMobile = false, onRegisterActions = null, onToast = null }) {
   const [selectedFile, setSelectedFile] = useState(null)
   const [schemaText, setSchemaText] = useState(defaultSchema)
   const [result, setResult] = useState(null)
   const [resultPagesProcessed, setResultPagesProcessed] = useState(null)
   const [resultWarning, setResultWarning] = useState(null)
+  const [resultModel, setResultModel] = useState(null)
+  const [resultFieldsExtracted, setResultFieldsExtracted] = useState(null)
+  const [resultCached, setResultCached] = useState(false)
   const [history, setHistory] = useState(loadStoredHistory)
   const [activeHistoryId, setActiveHistoryId] = useState(null)
   const [error, setError] = useState('')
@@ -574,13 +721,15 @@ function ExtractionApp({ isMobile = false, onRegisterActions = null, onToast = n
   const [isPending, startTransition] = useTransition()
   const [openFilePickerAction, setOpenFilePickerAction] = useState(null)
   const [resultsActions, setResultsActions] = useState(null)
+  const extractionCacheRef = useRef({})
+  const extractionCacheMetaRef = useRef({})
 
   useEffect(() => {
     saveStoredHistory(history)
   }, [history])
 
-  function addToHistory(data, pagesProcessed = null, warning = null) {
-    const historyItem = createHistoryItem(data, pagesProcessed, warning)
+  function addToHistory(data, pagesProcessed = null, warning = null, metadata = {}) {
+    const historyItem = createHistoryItem(data, pagesProcessed, warning, metadata)
 
     setHistory((currentHistory) => [historyItem, ...currentHistory])
     setActiveHistoryId(historyItem.id)
@@ -590,6 +739,11 @@ function ExtractionApp({ isMobile = false, onRegisterActions = null, onToast = n
     setResult(historyItem.data)
     setResultPagesProcessed(historyItem.pagesProcessed ?? null)
     setResultWarning(historyItem.warning ?? null)
+    setResultModel(historyItem.model ?? 'llama-4-scout')
+    setResultFieldsExtracted(
+      historyItem.fieldsExtracted ?? countExtractedFields(historyItem.data),
+    )
+    setResultCached(false)
     setActiveHistoryId(historyItem.id)
     setError('')
   }
@@ -643,33 +797,72 @@ function ExtractionApp({ isMobile = false, onRegisterActions = null, onToast = n
       return
     }
 
-    setLoading(true)
     setError('')
+    setActiveHistoryId(null)
+
+    const cacheKey = buildExtractionCacheKey(selectedFile, schemaText)
+    const cachedResult = cacheKey ? extractionCacheRef.current[cacheKey] : null
+    const cachedMeta = cacheKey ? extractionCacheMetaRef.current[cacheKey] : null
+
+    if (cachedResult) {
+      startTransition(() => {
+        setResult(cachedResult)
+        setResultPagesProcessed(cachedMeta?.pages ?? null)
+        setResultWarning(cachedMeta?.warning ?? null)
+        setResultModel(cachedMeta?.model ?? 'llama-4-scout')
+        setResultFieldsExtracted(
+          cachedMeta?.fieldsExtracted ?? countExtractedFields(cachedResult),
+        )
+        setResultCached(true)
+      })
+      onToast?.('info', 'Cached result loaded instantly.')
+      return
+    }
+
+    setLoading(true)
     setResult(null)
     setResultPagesProcessed(null)
     setResultWarning(null)
-    setActiveHistoryId(null)
+    setResultModel(null)
+    setResultFieldsExtracted(null)
+    setResultCached(false)
 
     const formData = new FormData()
     formData.append('file', selectedFile)
     formData.append('schema', schemaText)
 
     try {
-      const response = await axios.post('http://localhost:8000/extract', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
+      const res = await axios.post('http://localhost:8000/extract', formData)
+      console.log('Full API response:', res)
+      console.log('res.data:', res.data)
+      console.log('res.data.data:', res.data.data)
+      const extracted = res.data.data
+      const pagesProcessed = res.data.pages ?? res.data.pages_processed ?? null
+      const warning = res.data.warning ?? null
+      const model = res.data.model ?? 'llama-4-scout'
+      const fieldsExtracted = res.data.fields_extracted ?? countExtractedFields(extracted)
+
+      if (cacheKey) {
+        extractionCacheRef.current[cacheKey] = extracted
+        extractionCacheMetaRef.current[cacheKey] = {
+          pages: pagesProcessed,
+          warning,
+          model,
+          fieldsExtracted,
+        }
+      }
 
       startTransition(() => {
-        setResult(response.data.data)
-        setResultPagesProcessed(response.data.pages_processed ?? null)
-        setResultWarning(response.data.warning ?? null)
-        addToHistory(
-          response.data.data,
-          response.data.pages_processed ?? null,
-          response.data.warning ?? null,
-        )
+        setResult(extracted)
+        setResultPagesProcessed(pagesProcessed)
+        setResultWarning(warning)
+        setResultModel(model)
+        setResultFieldsExtracted(fieldsExtracted)
+        setResultCached(false)
+        addToHistory(extracted, pagesProcessed, warning, {
+          model,
+          fieldsExtracted,
+        })
       })
       onToast?.('success', 'Extraction complete!')
     } catch (requestError) {
@@ -679,6 +872,9 @@ function ExtractionApp({ isMobile = false, onRegisterActions = null, onToast = n
       setResult(null)
       setResultPagesProcessed(null)
       setResultWarning(null)
+      setResultModel(null)
+      setResultFieldsExtracted(null)
+      setResultCached(false)
       setError(message)
       onToast?.('error', 'Extraction failed. Try again.')
     } finally {
@@ -791,6 +987,9 @@ function ExtractionApp({ isMobile = false, onRegisterActions = null, onToast = n
             loading={loading}
             pagesProcessed={resultPagesProcessed}
             warning={resultWarning}
+            model={resultModel}
+            fieldsExtracted={resultFieldsExtracted}
+            cached={resultCached}
             onRegisterActions={setResultsActions}
           />
         </section>
@@ -1113,31 +1312,27 @@ function AppShell({ theme, toggleTheme }) {
 
   return (
     <>
-      <button
-        aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        className="sudowoodo-pressable"
-        style={styles.themeToggle}
-        type="button"
-        onClick={toggleTheme}
-      >
-        <ThemeIcon theme={theme} />
-      </button>
-      <Routes>
-        <Route element={<LandingPage />} path="/" />
-        <Route
-          element={
-            <ExtractionApp
-              isMobile={isMobile}
-              onRegisterActions={setExtractionActions}
-              onToast={showToast}
-            />
-          }
-          path="/app"
-        />
-        <Route element={<BatchProcessor />} path="/batch" />
-        <Route element={<Dashboard />} path="/dashboard" />
-        <Route element={<ApiDocs />} path="/docs" />
-      </Routes>
+      <div style={styles.appShellStack}>
+        {location.pathname !== '/' ? (
+          <AppNavbar isMobile={isMobile} theme={theme} toggleTheme={toggleTheme} />
+        ) : null}
+        <Routes>
+          <Route element={<LandingPage />} path="/" />
+          <Route
+            element={
+              <ExtractionApp
+                isMobile={isMobile}
+                onRegisterActions={setExtractionActions}
+                onToast={showToast}
+              />
+            }
+            path="/app"
+          />
+          <Route element={<BatchProcessor />} path="/batch" />
+          <Route element={<Dashboard />} path="/dashboard" />
+          <Route element={<ApiDocs />} path="/docs" />
+        </Routes>
+      </div>
       {location.pathname !== '/' ? <AppFooter /> : null}
       <CommandPalette
         open={isCommandPaletteOpen}
